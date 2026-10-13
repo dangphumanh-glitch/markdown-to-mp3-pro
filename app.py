@@ -1,26 +1,19 @@
-import asyncio
 import os
 import tempfile
-import edge_tts
 import streamlit as st
+from gtts import gTTS
 
 st.set_page_config(page_title="Markdown → MP3 Pro", page_icon="🎧", layout="centered")
 
 st.title("🎧 Markdown → MP3 Pro")
-st.markdown("Chuyển đổi file Markdown sang MP3 chất lượng cao phục vụ làm Audiobook.")
+st.markdown("Chuyển đổi file Markdown sang MP3 ổn định qua Google Voice.")
 
-# Chọn giọng đọc chuẩn
-voice = st.selectbox(
-    "Chọn giọng đọc (Voice):",
-    [
-        "en-US-AriaNeural (Nữ - Mượt mà, truyền cảm)",
-        "en-US-ChristopherNeural (Nam - Trầm ấm, chuyên nghiệp)",
-        "en-US-GuyNeural (Nam - Rõ ràng, tự nhiên)",
-        "en-US-JennyNeural (Nữ - Tươi tắn, thân thiện)"
-    ]
+# Chọn ngôn ngữ giọng đọc
+lang_option = st.selectbox(
+    "Chọn ngôn ngữ (Language):",
+    ["English (en)", "Vietnamese (vi)"]
 )
-# Lấy mã giọng thực tế từ chuỗi lựa chọn
-voice_code = voice.split(" ")[0]
+lang_code = "en" if "en" in lang_option else "vi"
 
 st.markdown("---")
 uploaded_file = st.file_uploader("Tải lên file Markdown (.md) của bạn:", type=["md", "txt"])
@@ -33,27 +26,19 @@ if uploaded_file is not None:
         if not markdown_content.strip():
             st.warning("File trống hoặc không có nội dung!")
         else:
-            with st.spinner("Đang tổng hợp giọng đọc và tạo file hoàn chỉnh..."):
+            with st.spinner("Đang tổng hợp giọng đọc từ Google..."):
                 try:
+                    # Tạo file MP3 bằng gTTS
+                    tts = gTTS(text=markdown_content, lang=lang_code, slow=False)
+                    
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio:
                         temp_audio_path = temp_audio.name
-
-                    async def generate_speech():
-                        for attempt in range(3):
-                            try:
-                                communicate = edge_tts.Communicate(markdown_content, voice_code)
-                                await communicate.save(temp_audio_path)
-                                return
-                            except Exception as err:
-                                if attempt == 2:
-                                    raise err
-                                await asyncio.sleep(2)
-
-                    asyncio.run(generate_speech())
-
-                    st.success("🎉 Chuyển đổi thành công!")
                     
-                    # Nghe thử trực tiếp file MP3 hoàn chỉnh ngay trên web
+                    tts.save(temp_audio_path)
+
+                    st.success("🎉 Chuyển đổi thành công 100%!")
+                    
+                    # Trình phát audio nghe thử ngay trên web
                     st.audio(temp_audio_path, format="audio/mp3")
 
                     with open(temp_audio_path, "rb") as f:
@@ -67,4 +52,4 @@ if uploaded_file is not None:
                     os.unlink(temp_audio_path)
                     
                 except Exception as e:
-                    st.error(f"Đã xảy ra lỗi kết nối dịch vụ: {e}")
+                    st.error(f"Đã xảy ra lỗi: {e}")
