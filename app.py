@@ -25,14 +25,22 @@ if uploaded_file is not None:
         if not markdown_content.strip():
             st.warning("File trống hoặc không có nội dung!")
         else:
-            with st.spinner("Đang tổng hợp giọng đọc..."):
+            with st.spinner("Đang kết nối tổng hợp giọng đọc..."):
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio:
                         temp_audio_path = temp_audio.name
 
                     async def generate_speech():
-                        communicate = edge_tts.Communicate(markdown_content, voice)
-                        await communicate.save(temp_audio_path)
+                        # Thêm cơ chế thử lại nếu bị nghẽn mạng tạm thời
+                        for attempt in range(3):
+                            try:
+                                communicate = edge_tts.Communicate(markdown_content, voice)
+                                await communicate.save(temp_audio_path)
+                                return
+                            except Exception as err:
+                                if attempt == 2:
+                                    raise err
+                                await asyncio.sleep(2)
 
                     asyncio.run(generate_speech())
 
@@ -49,4 +57,4 @@ if uploaded_file is not None:
                     os.unlink(temp_audio_path)
                     
                 except Exception as e:
-                    st.error(f"Đã xảy ra lỗi trong quá trình xử lý: {e}")
+                    st.error(f"Lỗi kết nối dịch vụ giọng đọc (403/Blocked). Vui lòng thử lại sau ít phút: {e}")
