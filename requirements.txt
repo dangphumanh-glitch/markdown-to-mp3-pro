@@ -1,2 +1,2 @@
 streamlit>=1.40
-gtts
+edge-tts>=6.1.12
