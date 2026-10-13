@@ -27,7 +27,7 @@ with col2:
     st.write("")
     preview_btn = st.button("🔊 Nghe thử giọng")
 
-# Xử lý khi bấm nút nghe thử giọng mẫu
+# Xử lý khi bấm nút nghe thử giọng mẫu có cơ chế thử lại chống lỗi 403
 if preview_btn:
     with st.spinner("Đang tạo âm thanh mẫu..."):
         try:
@@ -35,14 +35,20 @@ if preview_btn:
             sample_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
             
             async def generate_sample():
-                communicate = edge_tts.Communicate(sample_text, voice)
-                await communicate.save(sample_path)
+                for attempt in range(3):
+                    try:
+                        communicate = edge_tts.Communicate(sample_text, voice)
+                        await communicate.save(sample_path)
+                        return
+                    except Exception as err:
+                        if attempt == 2:
+                            raise err
+                        await asyncio.sleep(1)
 
             asyncio.run(generate_sample())
-            st.audio(sample_path, format="audio/mp3", autoplay=True)
-            # os.unlink(sample_path) # Giữ lại để phát trực tiếp trên UI
+            st.audio(sample_path, format="audio/mp3")
         except Exception as e:
-            st.error(f"Không thể phát âm thanh mẫu: {e}")
+            st.error(f"Không thể phát âm thanh mẫu (vui lòng thử lại sau ít phút): {e}")
 
 st.markdown("---")
 uploaded_file = st.file_uploader("Tải lên file Markdown (.md) của bạn:", type=["md", "txt"])
@@ -61,8 +67,15 @@ if uploaded_file is not None:
                         temp_audio_path = temp_audio.name
 
                     async def generate_speech():
-                        communicate = edge_tts.Communicate(markdown_content, voice)
-                        await communicate.save(temp_audio_path)
+                        for attempt in range(3):
+                            try:
+                                communicate = edge_tts.Communicate(markdown_content, voice)
+                                await communicate.save(temp_audio_path)
+                                return
+                            except Exception as err:
+                                if attempt == 2:
+                                    raise err
+                                await asyncio.sleep(2)
 
                     asyncio.run(generate_speech())
 
