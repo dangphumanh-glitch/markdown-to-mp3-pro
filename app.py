@@ -9,46 +9,18 @@ st.set_page_config(page_title="Markdown → MP3 Pro", page_icon="🎧", layout="
 st.title("🎧 Markdown → MP3 Pro")
 st.markdown("Chuyển đổi file Markdown sang MP3 chất lượng cao phục vụ làm Audiobook.")
 
-# Danh sách giọng đọc kèm câu mẫu để nghe thử
-voice_options = {
-    "Aria (Nữ - US, Mượt mà, truyền cảm)": "en-US-AriaNeural",
-    "Christopher (Nam - US, Trầm ấm, chuyên nghiệp)": "en-US-ChristopherNeural",
-    "Guy (Nam - US, Rõ ràng, tự nhiên)": "en-US-GuyNeural",
-    "Jenny (Nữ - US, Tươi tắn, thân thiện)": "en-US-JennyNeural"
-}
-
-col1, col2 = st.columns([3, 1])
-with col1:
-    selected_voice_label = st.selectbox("Chọn giọng đọc (Voice):", list(voice_options.keys()))
-    voice = voice_options[selected_voice_label]
-
-with col2:
-    st.write("")
-    st.write("")
-    preview_btn = st.button("🔊 Nghe thử giọng")
-
-# Xử lý khi bấm nút nghe thử giọng mẫu có cơ chế thử lại chống lỗi 403
-if preview_btn:
-    with st.spinner("Đang tạo âm thanh mẫu..."):
-        try:
-            sample_text = "Hello! This is a sample preview of the selected voice for your audiobook."
-            sample_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-            
-            async def generate_sample():
-                for attempt in range(3):
-                    try:
-                        communicate = edge_tts.Communicate(sample_text, voice)
-                        await communicate.save(sample_path)
-                        return
-                    except Exception as err:
-                        if attempt == 2:
-                            raise err
-                        await asyncio.sleep(1)
-
-            asyncio.run(generate_sample())
-            st.audio(sample_path, format="audio/mp3")
-        except Exception as e:
-            st.error(f"Không thể phát âm thanh mẫu (vui lòng thử lại sau ít phút): {e}")
+# Chọn giọng đọc chuẩn
+voice = st.selectbox(
+    "Chọn giọng đọc (Voice):",
+    [
+        "en-US-AriaNeural (Nữ - Mượt mà, truyền cảm)",
+        "en-US-ChristopherNeural (Nam - Trầm ấm, chuyên nghiệp)",
+        "en-US-GuyNeural (Nam - Rõ ràng, tự nhiên)",
+        "en-US-JennyNeural (Nữ - Tươi tắn, thân thiện)"
+    ]
+)
+# Lấy mã giọng thực tế từ chuỗi lựa chọn
+voice_code = voice.split(" ")[0]
 
 st.markdown("---")
 uploaded_file = st.file_uploader("Tải lên file Markdown (.md) của bạn:", type=["md", "txt"])
@@ -61,7 +33,7 @@ if uploaded_file is not None:
         if not markdown_content.strip():
             st.warning("File trống hoặc không có nội dung!")
         else:
-            with st.spinner("Đang tổng hợp giọng đọc và tạo file..."):
+            with st.spinner("Đang tổng hợp giọng đọc và tạo file hoàn chỉnh..."):
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio:
                         temp_audio_path = temp_audio.name
@@ -69,7 +41,7 @@ if uploaded_file is not None:
                     async def generate_speech():
                         for attempt in range(3):
                             try:
-                                communicate = edge_tts.Communicate(markdown_content, voice)
+                                communicate = edge_tts.Communicate(markdown_content, voice_code)
                                 await communicate.save(temp_audio_path)
                                 return
                             except Exception as err:
@@ -81,7 +53,7 @@ if uploaded_file is not None:
 
                     st.success("🎉 Chuyển đổi thành công!")
                     
-                    # Trình phát audio nghe thử file hoàn chỉnh
+                    # Nghe thử trực tiếp file MP3 hoàn chỉnh ngay trên web
                     st.audio(temp_audio_path, format="audio/mp3")
 
                     with open(temp_audio_path, "rb") as f:
@@ -95,4 +67,4 @@ if uploaded_file is not None:
                     os.unlink(temp_audio_path)
                     
                 except Exception as e:
-                    st.error(f"Đã xảy ra lỗi trong quá trình xử lý: {e}")
+                    st.error(f"Đã xảy ra lỗi kết nối dịch vụ: {e}")
